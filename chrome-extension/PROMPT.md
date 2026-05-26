@@ -15,7 +15,9 @@ Save this as a text shortcut on your phone / computer. At the start of every Bat
 
 Fetch this URL and follow every instruction in it exactly:
 
-https://raw.githubusercontent.com/swiftcloseoffers832-debug/scrape/main/chrome-extension/PLAYBOOK.md
+https://raw.githubusercontent.com/swiftcloseoffers832-debug/scrape/claude/peaceful-gates-M7nLb/chrome-extension/PLAYBOOK.md
+
+(Once this branch is merged to `main`, you can swap the URL to use `/main/` instead — it's shorter and won't change.)
 
 I'm on a BatchLeads property page right now. Once you've read the playbook, ask me how many properties to process this session, then run the full scrape end-to-end. Download the final CSV to my PC when done, and print the memory-update markdown block in chat so I can copy it.
 
