@@ -9,7 +9,9 @@ Your only job is to drive the browser through BatchLeads property pages and surf
 
 ## Prereqs
 
-Inject `scripts/helpers.js` once per session before running this skill. All actions here rely on the `window.__*` helpers it defines.
+Inject `scripts/helpers.js` once per session before running this skill via `mcp__playwright__browser_evaluate`. All actions here rely on the `window.__*` helpers it defines.
+
+For Claude Code on the web, prefer the `/scrape` slash command — it orchestrates this skill (plus capture, CSV, memory) end-to-end without manual driving.
 
 ## Rules
 
@@ -22,7 +24,7 @@ Inject `scripts/helpers.js` once per session before running this skill. All acti
 7. Advance to the next property with `window.__clickNextProperty()`. The Next Property button is `button.active-navigation` with `getBoundingClientRect().left > 500` (it has no aria-label and no inline text — the tooltip appears on hover only).
 8. If a property has no comparables, skip it immediately and continue. `__processBatch` records `{err: 'no comp tab'}` for that property and moves on.
 9. Do not stop, summarize, analyze, or pause between properties unless a checkpoint is triggered by `batchleads-session`.
-10. Never scroll. Never screenshot. The DOM is fully readable via `javascript_tool` even when off-screen.
+10. Never scroll. Never screenshot. The DOM is fully readable via `mcp__playwright__browser_evaluate` even when off-screen.
 
 ## Minimum reliable timings (do not shorten)
 

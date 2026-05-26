@@ -285,3 +285,20 @@ window.__downloadFinalCSV = function () {
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   return 'downloaded ' + window.__compCSV.length + ' rows';
 };
+
+// ---------------------------------------------------------------------------
+// 13. Return the final CSV as a string. Preferred path for Claude Code on
+// the web: Claude pulls the string out via browser_evaluate, then writes it
+// to the container filesystem and delivers it to the user as a chat file.
+// Non-destructive: does not mutate window.__compCSV.
+// ---------------------------------------------------------------------------
+window.__getCSV = function () {
+  return {
+    csv: window.__buildCSV(),
+    rows: window.__compCSV.filter(r => r.address && r.address.trim() !== '').length,
+    properties: window.__propertyCount,
+    zipCoverage: window.__compCSV.length === 0
+      ? 0
+      : window.__compCSV.filter(r => r.zip && r.zip.trim() !== '').length / window.__compCSV.length
+  };
+};

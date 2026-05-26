@@ -29,13 +29,18 @@ Address, Zip, Sale Price, Price Per Square Foot, Square Footage, Bedrooms, Bathr
 6. **Filter and dedupe before download.** Drop rows with empty `address`. Dedupe on `address + date + price + sqft`. `__buildCSV()` does both — do not pre-filter `window.__compCSV` yourself or you will mutate state mid-session.
 7. **Never export through the BatchLeads UI.** That costs credits and does not match the schema.
 
-## Download
+## Delivery (Claude Code on the web)
 
-Call `window.__downloadFinalCSV()`. It:
+Preferred path — the browser is in the container, not on the user's PC, so a `Blob.click()` download lands in the container's `/tmp` and is invisible to the user. Instead:
 
-1. Filters empty-address rows out of `window.__compCSV` (this one is destructive — only run when you actually want the final file).
-2. Builds the CSV via `__buildCSV()`.
-3. Creates a Blob and triggers a browser download named `comparables_data.csv`.
+1. `mcp__playwright__browser_evaluate` with `window.__getCSV()`. Returns `{ csv, rows, properties, zipCoverage }` — non-destructive.
+2. Verify `zipCoverage === 1.0`. Stop and report if less — never silently deliver a CSV with missing ZIPs.
+3. `Write` the CSV string to `outputs/comparables_<ISO-timestamp>.csv` in the container (`outputs/` is gitignored).
+4. `SendUserFile` with `status: "proactive"` and a caption summarizing rows/properties/ZIP coverage.
+
+## Browser-side download (legacy / non-MCP environments)
+
+If running in an agent that drives the user's actual browser (not Playwright-in-container), `window.__downloadFinalCSV()` triggers a Blob download named `comparables_data.csv`. This is the original behavior — keep it for backward compatibility.
 
 For mid-session snapshots without mutating state, use `__buildCSV()` directly and inspect the string.
 

@@ -7,10 +7,23 @@ description: Drive the BatchLeads comp-scraping session end-to-end — batch loo
 
 Your only job is to run the main scraping loop efficiently, checkpoint progress so nothing is lost, and stop cleanly when credits run low. Navigation, capture, CSV, and memory are separate skills that this skill orchestrates.
 
+## Quickest path: `/scrape`
+
+For Claude Code on the web, the `/scrape` slash command runs this entire flow autonomously (login → navigate → inject → batch loop → CSV delivery → memory commit). Prefer it over manual orchestration unless you're debugging.
+
+## Tooling — Playwright MCP
+
+The repo's `.mcp.json` auto-installs Playwright MCP. Drive the browser with:
+
+- `mcp__playwright__browser_navigate` — go to a URL
+- `mcp__playwright__browser_evaluate` — run JS (replaces `javascript_tool`)
+- `mcp__playwright__browser_wait_for` — `time: 30` for 30s waits (replaces `browser_batch` chains)
+- `mcp__playwright__browser_click` / `browser_type` — login form only
+
 ## Session start (run once)
 
 1. Read `skills/memory/session-memory.md`. Apply the `Current Best Method` from the most recent entry. Note any new `Known Pitfalls`.
-2. Inject `scripts/helpers.js` into the page via `javascript_tool`. This defines every `window.__*` function and resets per-session state if absent.
+2. Inject `scripts/helpers.js` into the page via `mcp__playwright__browser_evaluate`. This defines every `window.__*` function and resets per-session state if absent.
 3. Land on the first BatchLeads property page (the user usually has this open already).
 4. Start the watchdog: `window.__startCrashWatchdog()` — auto-emergency-saves if no new comps arrive for 2 minutes.
 5. Click the Comparables tab on the first property and capture it:
@@ -30,7 +43,7 @@ For each batch (20 properties is the sweet spot — 15–25 acceptable):
    window.__processBatch(20).then(r => { window.__lastBatch = r; }); 'started';
    ```
 
-2. **Chain `browser_batch` waits** — 8–12 sequential `{action:"wait", duration:10}` entries. Round-tripping per-click through the agent is far slower than letting the in-page setTimeout loop run.
+2. **Wait via `mcp__playwright__browser_wait_for`** with `time: 30` (30s). Repeat until `window.__lastBatch !== null`. Round-tripping per-click through the agent is far slower than letting the in-page setTimeout loop run.
 
 3. **Poll for completion**:
 
@@ -67,11 +80,12 @@ These are built into the helper functions. Do not duplicate them outside the hel
 ## Session end
 
 1. Stop the watchdog: `clearInterval(window.__watchdogTimer)`.
-2. Run `window.__downloadFinalCSV()`. Confirm row count > 0.
-3. Verify 100% ZIP coverage: `window.__compCSV.filter(r => !r.zip).length` should be `0`.
-4. Hand the downloaded `comparables_data.csv` to the user.
-5. Trigger the `batchleads-memory` skill to append a Session Log entry.
-6. **Never** export through the BatchLeads UI — that costs credits and breaks the schema.
+2. Pull the CSV out of the page as a string: `browser_evaluate` with `window.__getCSV()`. Returns `{ csv, rows, properties, zipCoverage }`.
+3. **Verify 100% ZIP coverage** — `zipCoverage` must equal `1.0`. If less, stop and report rather than silently delivering an incomplete file.
+4. Write the CSV to `outputs/comparables_<ISO-timestamp>.csv` in the container with the `Write` tool.
+5. Deliver to the user via `SendUserFile` (status `proactive`). Include a caption: `"N rows / M properties / 100% ZIP coverage"`.
+6. Trigger the `batchleads-memory` skill to append a Session Log entry, then commit + push.
+7. **Never** export through the BatchLeads UI — that costs credits and breaks the schema.
 
 ## Resume from crash
 
