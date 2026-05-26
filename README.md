@@ -39,6 +39,12 @@ Copies every `skills/<name>/` into `~/.claude/skills/<name>/` and places `helper
 3. Trigger `batchleads-session` — it reads `session-memory.md`, starts the watchdog, and drives the batch loop end-to-end.
 4. At session end, the final `comparables_data.csv` downloads automatically. Then `batchleads-memory` appends a Session Log entry — commit and push so the next session benefits.
 
+## Automatic priming
+
+When you start a Claude Code session in this repo, `.claude/hooks/session-start.sh` runs automatically. It installs the skills into `~/.claude/skills/` and injects `session-memory.md` into the assistant's context, so every session begins with the latest `Current Best Method` and `Known Pitfalls` already loaded — no manual step required.
+
+At session end, ask Claude to append a Session Log entry, then commit and push so the next session inherits the improvement.
+
 ## Critical invariant
 
 ZIP codes are mandatory. The whole CSV is useless without them. ZIP comes from the dedicated `Zip` column in the comp table — never parsed from the address string. See `Known Pitfalls` in `skills/memory/session-memory.md`.
