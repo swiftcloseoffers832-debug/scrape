@@ -1,10 +1,23 @@
 # scrape
 
-BatchLeads comparables scraper for **Claude Code on the web**, packaged as modular skills with a one-command `/scrape` workflow.
+BatchLeads comparables scraper. Two ways to run it:
 
-## What it does
+- **Claude for Chrome extension** (drives your real browser, downloads to your PC) → see [`chrome-extension/PROMPT.md`](chrome-extension/PROMPT.md). One prompt to paste.
+- **Claude Code on the web / CLI** (`/scrape` slash command, Playwright in a container) → see the Claude Code section below.
 
-Open this repo in Claude Code on the web. Type `/scrape`. Claude logs into BatchLeads in a containerized browser, walks every property in the list, captures every comp on every page (with ZIPs), delivers the final CSV to you in chat, prints a memory diff for you to copy, and commits the updated memory log to git. Watchdog auto-saves on stalls; localStorage checkpoints survive crashes.
+The two share a single source of truth: `scripts/helpers.js` (the in-page JS) and `skills/memory/session-memory.md` (the self-improvement log).
+
+## Claude for Chrome — fastest setup
+
+1. Open BatchLeads, log in, navigate to the property you want to start from.
+2. Open the Claude for Chrome extension.
+3. Paste the prompt from [`chrome-extension/PROMPT.md`](chrome-extension/PROMPT.md). Done.
+
+Claude fetches [`chrome-extension/PLAYBOOK.md`](chrome-extension/PLAYBOOK.md) from this repo (which inlines the latest helpers + memory), runs the scrape, and downloads `comparables_data.csv` to your PC. At the end it prints a Session Log entry — open Claude Code on the web and say "append this to memory and push" to update the repo, or paste it on GitHub by hand.
+
+## Claude Code (slash command)
+
+`/scrape` runs the entire flow in a Playwright container.
 
 ## One-time setup
 
