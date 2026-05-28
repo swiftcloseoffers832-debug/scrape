@@ -57,6 +57,7 @@ docker/install-test/
 .claude/
 .claude-plugin/
 .codex-plugin/
+.github/
 .dockerignore
 .gitattributes
 .markdownlint.json
