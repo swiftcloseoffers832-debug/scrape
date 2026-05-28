@@ -16,16 +16,20 @@ math, delete it — math belongs in `comp_engine.py`.
 ## Markets / ZIPs
 
 <!--
-Examples to write yourself, replace these with confirmed facts:
-
-- 77096: sqft over 2000 is required for a valid comp set; smaller
-  homes return THIN.
-- 77018: pool is fine, 12 months of data routinely passes the
-  spread gate.
-- Corpus Christi pool too thin overall, default to skip.
+Add a note here only after YOU have seen the pattern at least twice in
+comp_run_log.csv. Format: ZIP/market -> the confirmed fact.
 -->
 
-_(no confirmed notes yet)_
+- **Corpus Christi (78404, 78405, 78410, 78411, 78412, 78414, 78415,
+  78418): expect UNRELIABLE, no number.** Verified against
+  `comparables_data_final.csv` (28 May 2026): for 3/2 homes across the
+  full ±20% sqft band, the price/sqft spread stays above the 30% gate
+  even after IQR trim (e.g. 78414 @ 1450 sqft = 73% spread on 23
+  comps). There are plenty of comps — the pool is *noisy*, not thin.
+  By zip+bed+bath+sqft alone the engine cannot comp Corpus to a
+  reliable number; that is correct behavior, not a bug. If Corpus must
+  be comped, it needs tighter (e.g. subdivision-level) matching — a
+  deliberate rule change, decided by a human, not an engine guess.
 
 ---
 

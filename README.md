@@ -13,8 +13,50 @@ through real math, or they do not exist.
 | File | Purpose |
 |---|---|
 | `comp_engine.py` | Deterministic calculator. All filters, gates, math. Tunable parameters live at the top of the file. |
-| `comp_run_log.csv` | Auto-created on first run. One row per call: subject, comps found/used, spread, status, and numbers (or no-number reason). |
-| `analyst_notes.md` | Human-maintained facts the analyst loads at session start (e.g. "77096 needs sqft > 2000"). The engine does **not** read this. |
+| `verify_answer.py` | External provenance gate. Confirms every dollar figure in an analyst answer traces to a logged engine run token this session. |
+| `analyst_protocol.md` | The rules the analyst loads at session start. Use as project/system instructions. |
+| `comp_run_log.csv` | Auto-created on first run. One row per call: subject, comps found/used, spread, status, numbers (or no-number reason), and the run token + input hash. |
+| `analyst_notes.md` | Human-maintained facts the analyst loads at session start (e.g. "Corpus Christi returns UNRELIABLE"). The engine does **not** read this. |
+
+## Guardrail — why a number can't be faked
+
+The engine alone doesn't stop fabrication: an LLM analyst can still type a
+made-up number. The guardrail makes every number **traceable and gate-able**.
+
+1. **Run token.** Every engine run mints `SC-<session>-<seq>-<hash8>`, where
+   `hash8` is a SHA-256 over the run's inputs + outputs. It is printed as a
+   `RUN TOKEN:` line and written to `comp_run_log.csv`. `<session>` comes from
+   `$SWIFTCLOSE_SESSION_ID` (set once per analyst session) so yesterday's log
+   rows can't be re-quoted as today's provenance.
+2. **Protocol.** `analyst_protocol.md` requires the analyst to quote the token
+   next to every dollar figure and to answer exactly `DATA NOT FOUND` for any
+   non-`VALID` result.
+3. **Verifier.** `verify_answer.py` reads the analyst's final text and fails it
+   (exit 1) if any dollar figure lacks a matching session-logged token — or if
+   a log row was hand-edited (the hash no longer matches its token).
+
+```bash
+echo "...analyst answer with RUN TOKEN..." | \
+  SWIFTCLOSE_SESSION_ID=abc123 python verify_answer.py --log comp_run_log.csv
+# exit 0 = every figure provenanced; exit 1 = fabrication, names the amount
+```
+
+### Two enforcement tiers
+
+- **Tier 1 (Claude.ai project, today):** `analyst_protocol.md` as the project
+  instructions + the token scheme. Strong behavioral guardrail and full
+  auditability; you (or a cron) run `verify_answer.py` to catch fabrication
+  after the fact. Not a hard gate — the model could still ignore instructions.
+- **Tier 2 (orchestrated wrapper — hard gate):** run the analyst via an
+  API/agent wrapper that captures its final text, runs `verify_answer.py`, and
+  releases the answer only on exit 0; otherwise replaces it with
+  `DATA NOT FOUND`. This is the only setup that makes a fabricated number
+  *impossible to deliver*.
+
+**Honest limit:** this cannot stop a model from emitting text (it could type a
+fake-looking token). It makes fabrication **detectable and blockable**, not
+unthinkable. The enforcement value comes entirely from the verifier running
+*outside* the model.
 
 ## How the analyst runs the engine
 

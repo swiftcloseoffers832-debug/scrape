@@ -31,6 +31,7 @@ from __future__ import annotations
 import argparse
 import csv
 import glob
+import hashlib
 import json
 import os
 import re
@@ -72,6 +73,10 @@ DOLLAR_ROUND = 100
 
 # File names
 LOG_FILE = "comp_run_log.csv"
+
+# Session binding for run tokens. The orchestration layer should set this
+# per analyst session so old log rows cannot be re-quoted as provenance.
+SESSION_ENV_VAR = "SWIFTCLOSE_SESSION_ID"
 
 
 # ---------------------------------------------------------------------------
@@ -217,8 +222,8 @@ COLUMN_ALIASES = {
     "zip": ["zip", "zip code", "postal code", "zipcode", "zip_code"],
     "mls_status": ["mls_status", "status", "mls status", "listing status"],
     "sale_price": ["sale_price", "sold price", "sale price", "close price", "closed price", "sold_price"],
-    "price_per_sqft": ["price_per_sqft", "$/sqft", "price/sqft", "ppsf", "$ per sqft", "price per sqft"],
-    "sqft": ["sqft", "sq ft", "square feet", "living area", "gla", "building sqft"],
+    "price_per_sqft": ["price_per_sqft", "$/sqft", "price/sqft", "ppsf", "$ per sqft", "price per sqft", "price per square foot", "price per sq ft"],
+    "sqft": ["sqft", "sq ft", "square feet", "square footage", "square foot", "living area", "gla", "building sqft"],
     "beds": ["beds", "bedrooms", "br", "bed"],
     "baths": ["baths", "bathrooms", "ba", "bath", "total baths"],
     "year_built": ["year_built", "year built", "yr built", "yearbuilt"],
@@ -602,11 +607,9 @@ def run_comp(
         )
 
     math = compute_offer(trim.kept, subj)
-    result = _ok_result(
+    return _ok_result(
         subj, math, filt, trim, load_stats=load_stats, data_dir=data_dir, now=now,
     )
-    append_log(result, data_dir)
-    return result
 
 
 def _no_number_result(
@@ -648,8 +651,7 @@ def _no_number_result(
         "report": report,
         "timestamp": now.isoformat(timespec="seconds"),
     }
-    append_log(result, data_dir)
-    return result
+    return _finalize(result, data_dir)
 
 
 def _ok_result(
@@ -675,7 +677,7 @@ def _ok_result(
         flagged_old=filt.flagged_old,
     )
 
-    return {
+    result = {
         "status": VALID,
         "reason": "",
         "subject": asdict(subj),
@@ -696,6 +698,7 @@ def _ok_result(
         "report": report,
         "timestamp": now.isoformat(timespec="seconds"),
     }
+    return _finalize(result, data_dir)
 
 
 # ---------------------------------------------------------------------------
@@ -808,7 +811,94 @@ LOG_HEADERS = [
     "opening_range_low",
     "opening_range_high",
     "walk_away_above",
+    "session_id",
+    "run_token",
+    "input_hash",
 ]
+
+# Canonical field order hashed into the run token. Both the engine (when it
+# mints a token) and verify_answer.py (when it re-checks one) must build the
+# string from exactly these fields in this order, or the hash will not match.
+TOKEN_HASH_FIELDS = [
+    "subject_address",
+    "subject_zip",
+    "subject_beds",
+    "subject_baths",
+    "subject_sqft",
+    "subject_repair_level",
+    "status",
+    "arv",
+    "max_offer",
+    "opening_range_low",
+    "opening_range_high",
+    "walk_away_above",
+]
+
+
+def _current_session_id() -> str:
+    return (os.environ.get(SESSION_ENV_VAR, "") or "").strip() or "local"
+
+
+def canonical_token_string(fields: dict) -> str:
+    """Build the canonical string hashed into a run token from a flat dict of
+    log-style fields. Missing values become empty strings so a no-number run
+    and its log row hash identically."""
+    return "|".join(str(fields.get(k, "") if fields.get(k) is not None else "")
+                     for k in TOKEN_HASH_FIELDS)
+
+
+def _result_to_token_fields(result: dict) -> dict:
+    subj = result.get("subject", {})
+    return {
+        "subject_address": subj.get("address", ""),
+        "subject_zip": subj.get("zip", ""),
+        "subject_beds": subj.get("beds", ""),
+        "subject_baths": subj.get("baths", ""),
+        "subject_sqft": subj.get("sqft", ""),
+        "subject_repair_level": subj.get("repair_level", ""),
+        "status": result.get("status", ""),
+        "arv": result.get("arv"),
+        "max_offer": result.get("max_offer"),
+        "opening_range_low": result.get("opening_range_low"),
+        "opening_range_high": result.get("opening_range_high"),
+        "walk_away_above": result.get("walk_away_above"),
+    }
+
+
+def _count_session_runs(data_dir: str, session_id: str) -> int:
+    path = os.path.join(data_dir, LOG_FILE)
+    if not os.path.exists(path):
+        return 0
+    count = 0
+    try:
+        with open(path, "r", encoding="utf-8", newline="") as fh:
+            for row in csv.DictReader(fh):
+                if row.get("session_id", "") == session_id:
+                    count += 1
+    except OSError:
+        return 0
+    return count
+
+
+def _finalize(result: dict, data_dir: str) -> dict:
+    """Mint the run token, attach provenance to the result + report, and log
+    it. This is the single choke point every result passes through, so a
+    number can never leave the engine without a logged, hash-bound token."""
+    session_id = _current_session_id()
+    input_hash = hashlib.sha256(
+        canonical_token_string(_result_to_token_fields(result)).encode("utf-8")
+    ).hexdigest()
+    seq = _count_session_runs(data_dir, session_id) + 1
+    token = f"SC-{session_id}-{seq}-{input_hash[:8]}"
+
+    result["session_id"] = session_id
+    result["input_hash"] = input_hash
+    result["run_token"] = token
+    if result.get("report"):
+        result["report"] = result["report"] + f"\nRUN TOKEN: {token}"
+
+    append_log(result, data_dir)
+    return result
 
 
 def append_log(result: dict, data_dir: str) -> None:
@@ -835,6 +925,9 @@ def append_log(result: dict, data_dir: str) -> None:
         "opening_range_low": result.get("opening_range_low", ""),
         "opening_range_high": result.get("opening_range_high", ""),
         "walk_away_above": result.get("walk_away_above", ""),
+        "session_id": result.get("session_id", ""),
+        "run_token": result.get("run_token", ""),
+        "input_hash": result.get("input_hash", ""),
     }
     try:
         with open(path, "a", encoding="utf-8", newline="") as fh:
