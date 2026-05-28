@@ -1,0 +1,23 @@
+{
+  "match": {
+    "beds_tolerance": 1,
+    "baths_tolerance": 1,
+    "sqft_pct_tolerance": 0.20
+  },
+  "recency_months": 12,
+  "thin_minimum": 5,
+  "spread_threshold_pct": 30.0,
+  "iqr_multiplier": 1.5,
+  "repair_ppsf": {
+    "light": 20,
+    "moderate": 35,
+    "heavy": 55
+  },
+  "wholesale_factor": 0.70,
+  "assignment_fee": 15000,
+  "opening_offset_low": 25000,
+  "opening_offset_high": 15000,
+  "sale_price_min": 1000,
+  "sale_price_max": 5000000,
+  "dollar_rounding": 100
+}
