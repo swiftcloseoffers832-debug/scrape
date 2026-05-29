@@ -1,0 +1,11 @@
+Address,City,State,ZIP,Beds,Baths,SqFt,Price,MLS Status,Date Sold,Property Type
+10430 Sageyork Dr,Houston,TX,77089,3,2,1850,277500,Sold,2025-09-15,Single Family
+10512 Sagetrail Dr,Houston,TX,77089,3,2,1800,266400,Sold,2025-08-02,Single Family
+10318 Sagewind Dr,Houston,TX,77089,4,2,1990,302500,Sold,2025-10-11,Single Family
+9803 Sagedowne Ln,Houston,TX,77089,3,2,1760,259000,Sold,2025-07-20,Single Family
+10915 Sagecrest Dr,Houston,TX,77089,3,2.5,1920,288000,Sold,2025-06-30,Single Family
+10220 Sageberry Dr,Houston,TX,77089,3,2,1840,272000,Sold,2025-11-05,Single Family
+123 Active Listing Ln,Houston,TX,77089,3,2,1850,310000,Active,,Single Family
+456 Pending Ct,Houston,TX,77089,3,2,1850,295000,Pending,,Single Family
+8800 Different Zip Rd,Houston,TX,77504,3,2,1850,280000,Sold,2025-09-01,Single Family
+200 Big House Blvd,San Antonio,TX,78201,5,3,3200,520000,Sold,2025-09-01,Single Family
